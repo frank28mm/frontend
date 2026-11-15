@@ -1,0 +1,86 @@
+name: frontend-deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: noteacher-frontend-production
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint -- --max-warnings=0
+
+      - name: Run tests
+        run: npm run test -- --run
+
+      - name: Build dist
+        run: npm run build
+
+      - name: Package dist artifact
+        run: tar -czf noteacher-frontend-dist.tar.gz -C dist .
+
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: noteacher-frontend-dist
+          path: noteacher-frontend-dist.tar.gz
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Download dist artifact
+        uses: actions/download-artifact@v6
+        with:
+          name: noteacher-frontend-dist
+          path: dist-artifact
+
+      - name: Prepare upload bundle
+        run: cp dist-artifact/noteacher-frontend-dist.tar.gz noteacher-frontend-dist.tar.gz
+
+      - name: Copy dist artifact to ECS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.TINT_CORE_ECS_HOST }}
+          username: ${{ secrets.TINT_CORE_ECS_USER }}
+          key: ${{ secrets.TINT_CORE_ECS_SSH_KEY }}
+          source: "noteacher-frontend-dist.tar.gz"
+          target: "/data/tint-core"
+
+      - name: Deploy dist on ECS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.TINT_CORE_ECS_HOST }}
+          username: ${{ secrets.TINT_CORE_ECS_USER }}
+          key: ${{ secrets.TINT_CORE_ECS_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            mkdir -p /data/tint-core/app/frontend
+            rm -rf /data/tint-core/app/frontend/*
+            tar -xzf /data/tint-core/noteacher-frontend-dist.tar.gz -C /data/tint-core/app/frontend
+            rm -f /data/tint-core/noteacher-frontend-dist.tar.gz
+            nginx -t
+            systemctl reload nginx
+            curl -fsS -H 'Host: thereisnoteacher.cn' http://127.0.0.1/ >/dev/null
