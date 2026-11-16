@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ArrowLeft, History as HistoryIcon, Plus, Send } from 'lucide-react';
+import { ArrowLeft, History as HistoryIcon, Plus } from 'lucide-react';
 import { useAssistant, type ConfirmationOverlay } from '@/hooks/useAssistant';
 import { canonicalConfirmation, assistantService, OPEN_ASSISTANT_HISTORY_EVENT, PLAN_DISCUSSION_EVENT, type PlanDiscussionRequest, type AssistantBlock, type ReferencePage, type MistakeReference } from '@/services/assistant';
 import { validReportProfileId } from '@/services/reportNavigationScope';
@@ -165,24 +165,15 @@ function AssistantPanel() {
   return <div className={conversationView ? 'fixed inset-0 z-50 pointer-events-none flex justify-center' : 'fixed inset-x-0 bottom-0 z-40 pointer-events-none px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]'}>
     <button type="button" aria-label="知之" className="sr-only" onClick={() => setOpen(true)}>知之</button>
     {open && <section role="dialog" aria-label="与知之对话" data-view={conversationView ? 'conversation' : 'entry'} className={conversationView
-      ? 'pointer-events-auto w-full max-w-md h-[100dvh] bg-neu-bg text-neu-text flex flex-col overflow-hidden text-sm'
+      ? 'pointer-events-auto min-h-[100dvh] w-full max-w-md mx-auto bg-neu-bg text-neu-text flex flex-col overflow-hidden text-sm selection:bg-primary/20'
       : 'pointer-events-auto w-full max-w-sm mx-auto rounded-2xl bg-neu-bg text-neu-text shadow-neu-flat p-2 flex flex-col overflow-visible text-sm'}>
-      {conversationView && <header className="flex items-center justify-between gap-3 border-b border-neu-text/10 shrink-0 p-4 sm:px-6">
-        <div className="flex items-center gap-3 min-w-0">
-          <button type="button" aria-label="返回主页面" title="返回主页面" onClick={leaveConversation} className="w-9 h-9 rounded-full flex items-center justify-center text-neu-text-secondary hover:text-primary hover:bg-white/30 transition-colors shrink-0">
-            <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+      {conversationView && <header className="flex items-center justify-between p-6 bg-neu-bg/90 backdrop-blur-sm sticky top-0 z-20 shrink-0">
+        <div className="w-10">
+          <button type="button" aria-label="返回主页面" title="返回主页面" onClick={leaveConversation} className="w-10 h-10 rounded-full bg-neu-bg shadow-neu-icon-btn flex items-center justify-center text-neu-text-secondary hover:text-neu-text active:text-primary active:shadow-neu-pressed transition-all duration-300">
+            <ArrowLeft className="w-5 h-5" aria-hidden="true" />
           </button>
-          <div className={`${conversationView ? 'w-10 h-10' : 'w-9 h-9'} rounded-full bg-neu-bg shadow-neu-icon flex items-center justify-center shrink-0`}>
-            <img src="/tint-logo-hd-neu.png" alt="知之头像" className={`rizhi-avatar-float ${conversationView ? 'w-8 h-8' : 'w-7 h-7'} object-contain`} />
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h2 className="text-base font-semibold">知之</h2>
-              <span className="text-[11px] text-neu-text-secondary">AI 学习助理</span>
-            </div>
-            {conversationView && <p className="text-xs text-neu-text-secondary truncate">了解学习情况，查询错题，生成报告和复习方案</p>}
-          </div>
         </div>
+        <h1 className="text-xl font-bold text-neu-text tracking-wide text-center flex-1">知之</h1>
         <div className="flex items-center gap-1 shrink-0">
           <button type="button" aria-label={history ? '返回对话' : '历史记录'} title={history ? '返回对话' : '历史记录'} onClick={() => { if (history) setHistory(false); else openHistory(); }} className="w-9 h-9 rounded-full flex items-center justify-center text-neu-text-secondary hover:text-primary hover:bg-white/30 transition-colors">
             <HistoryIcon className="w-4 h-4" aria-hidden="true" />
@@ -192,11 +183,17 @@ function AssistantPanel() {
           </button>
         </div>
       </header>}
+      {conversationView && <div className="flex items-center gap-3 px-4 pt-3 text-xs text-neu-text-secondary" aria-label="知之 AI 学习助理">
+        <div className="w-9 h-9 rounded-full bg-neu-bg shadow-neu-icon flex items-center justify-center shrink-0">
+          <img src="/tint-logo-hd-neu.png" alt="知之头像" className="rizhi-avatar-float w-7 h-7 object-contain" />
+        </div>
+        <span>知之 · AI 学习助理</span>
+      </div>}
       {conversationView && discussionError && <p role="alert" className="px-4 py-2 text-red-700 text-xs">{discussionError}</p>}
       {conversationView && !history && assistant.planContext && <div aria-label="方案讨论绑定" className="shrink-0 px-4 py-2 border-b border-neu-text/10 text-xs break-words">
         <Link className="text-primary" to={`/plan/${encodeURIComponent(assistant.planContext.plan_id)}?version=${assistant.planContext.version}`} onClick={event => { if (!assistant.canNavigateConfirmation()) { event.preventDefault(); return; } setOpen(false); }}>复习方案 · 版本 {assistant.planContext.version}</Link>
       </div>}
-      {conversationView && (history ? <div className="flex-1 min-h-0 w-full max-w-3xl mx-auto overflow-y-auto p-4 sm:p-6">
+      {conversationView && (history ? <div className="flex-1 min-h-0 w-full max-w-md mx-auto overflow-y-auto px-4 py-6 pb-[calc(10rem+env(safe-area-inset-bottom))]">
         <div role="tablist" aria-label="会话状态" className="flex gap-5 mb-3">{[false, true].map(value => <button key={String(value)} role="tab" aria-selected={archivedHistory === value} onClick={() => { setArchivedHistory(value); void assistant.list(value); }} className={archivedHistory === value ? 'text-primary font-semibold' : 'text-neu-text-secondary'}>{value ? '已归档' : '近期会话'}</button>)}</div>
         {assistant.historyError && <p role="alert">{assistant.historyError}</p>}
         {!assistant.conversations.length && !assistant.historyError && <p className="py-6 text-neu-text-secondary">暂无会话</p>}
@@ -212,7 +209,8 @@ function AssistantPanel() {
           {deleting === conversation.conversation_id && <div className="mt-2"><p>删除后无法恢复此会话。</p><button className="text-red-700 mr-4 py-2" onClick={() => { void assistant.removeConversation(deleting); setDeleting(''); }}>确认删除</button><button onClick={() => setDeleting('')}>取消</button></div>}
         </li>)}</ul>
         {assistant.listCursor && <button className="text-primary py-3" onClick={() => void assistant.list(archivedHistory, assistant.listCursor)}>更多会话</button>}
-      </div> : <div className="flex-1 min-h-0 w-full max-w-3xl mx-auto overflow-y-auto p-4 sm:p-6 space-y-4" aria-live="polite">
+      </div> : <div className="flex-1 min-h-0 overflow-y-auto w-full no-scrollbar" aria-live="polite">
+        <div className="w-full max-w-md mx-auto px-4 py-6 space-y-6 pb-[calc(10rem+env(safe-area-inset-bottom))]">
         {assistant.beforeSequence > 0 && <button onClick={() => void assistant.olderMessages()} className="text-primary">更早的消息</button>}
         {assistant.recoveredConfirmation && (isPlanConfirmation(assistant.recoveredConfirmation)
           ? <PlanConfirmation proposal={assistant.recoveredConfirmation} overlay={assistant.confirmations[assistant.recoveredConfirmation.confirmation_id]} disabled={assistant.pending || assistant.loadingConversation || assistant.archived} onExecute={id => void assistant.executeConfirmation(id)} onRefresh={id => void assistant.refreshConfirmation(id)} canNavigate={assistant.canNavigateConfirmation} onNavigate={() => setOpen(false)} />
@@ -221,9 +219,8 @@ function AssistantPanel() {
           const timestamp = formatMessageTime(message.created_at);
           const userMessage = message.role === 'user';
           return <article key={message.message_id} className={`flex w-full ${userMessage ? 'justify-end' : 'justify-start'}`}>
-            <div className="max-w-[88%] space-y-1">
-              <p className={`text-[11px] text-neu-text-secondary ${userMessage ? 'text-right' : 'text-left'}`}>{userMessage ? '你' : '知之'}</p>
-              <div className={`rounded-2xl border border-white/40 px-4 py-3 text-sm leading-relaxed overflow-x-auto break-words ${userMessage ? 'rounded-br-none bg-neu-bg shadow-neu-pressed' : 'rounded-bl-none bg-neu-bg shadow-neu-flat'}`}>
+            <div className="max-w-[86%] sm:max-w-[70%] space-y-1">
+              <div className={`p-4 rounded-2xl text-sm leading-relaxed border border-white/40 overflow-x-auto break-words ${userMessage ? 'rounded-br-none bg-neu-bg shadow-neu-pressed' : 'rounded-bl-none bg-neu-bg shadow-neu-flat'}`}>
                 <div className="space-y-3">{message.blocks.map((block, index) => <MessageBlock key={index} block={block} turnId={message.turn_id} conversationId={assistant.conversationId} role={message.role} confirmations={assistant.confirmations} disabled={actionDisabled(block, message.turn_id, message.sequence)} onExecute={id => void assistant.executeConfirmation(id)} onRefresh={id => void assistant.refreshConfirmation(id)} canNavigate={assistant.canNavigateConfirmation} onChoose={name => void submit(name)} onNavigate={() => setOpen(false)} />)}</div>
               </div>
               {timestamp && <time dateTime={message.created_at} className={`block text-[10px] text-neu-text-secondary/70 ${userMessage ? 'text-right' : 'text-left'}`}>{timestamp}</time>}
@@ -239,15 +236,29 @@ function AssistantPanel() {
         {assistant.confirmationLocked && assistant.error && !Object.keys(assistant.confirmations || {}).length && <button type="button" disabled={assistant.loadingConversation} className="text-primary py-2" onClick={() => void assistant.retryConfirmationRecovery()}>重新加载确认会话</button>}
         {assistant.archived && <p className="text-neu-text-secondary">此会话已归档</p>}
         <div ref={transcriptEnd} aria-hidden="true" className="h-px" />
+        </div>
       </div>)}
-      {(!conversationView || !history) && <div className={`shrink-0 ${conversationView ? 'border-t border-neu-text/10 p-3 sm:p-4 w-full max-w-3xl mx-auto' : 'p-0'}`}>
+      {(!conversationView || !history) && (conversationView ? <div className="fixed bottom-0 left-0 right-0 z-30 flex justify-center pointer-events-none w-full max-w-md mx-auto">
+        <div className="pointer-events-auto w-full bg-neu-bg/95 backdrop-blur-sm shadow-[0_-12px_28px_rgba(0,0,0,0.06)] border-t border-white/50 rounded-t-[28px] border-x border-white/40 border-b-0">
+          <div className="px-4 pt-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+            <form className="flex items-end gap-3" onSubmit={event => { event.preventDefault(); void submit(draft); }}>
+              <div className="flex-1 bg-neu-bg rounded-[1.5rem] shadow-neu-input transition-all flex items-center min-h-[52px] border border-transparent">
+                <textarea ref={input} aria-label="给知之的消息" placeholder="问问你的学习情况，或输入你想生成的内容" rows={1} value={draft} maxLength={6000} onChange={event => setDraft(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); void submit(draft); } }} disabled={blocked || assistant.archived} className="w-full bg-transparent border-none focus:ring-0 outline-none focus:outline-none text-sm px-5 py-3 placeholder:text-neu-text-secondary/50 text-neu-text leading-relaxed resize-none max-h-32" />
+              </div>
+              <button aria-label="发送" title="发送" type="submit" disabled={blocked || assistant.archived || !draft.trim()} className="size-12 shrink-0 rounded-full bg-neu-bg shadow-neu-flat active:shadow-neu-pressed transition-all flex items-center justify-center border border-white/50 text-neu-text disabled:opacity-50 disabled:grayscale">
+                <span className="material-symbols-outlined text-[24px] ml-0.5" aria-hidden="true">send</span>
+              </button>
+            </form>
+          </div>
+        </div>
+      </div> : <div className="p-0">
         <form className="flex items-end gap-2" onSubmit={event => { event.preventDefault(); void submit(draft); }}>
           <textarea ref={input} aria-label="给知之的消息" placeholder="问问你的学习情况，或输入你想生成的内容" rows={1} value={draft} maxLength={6000} onChange={event => setDraft(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); void submit(draft); } }} disabled={blocked || assistant.archived} className="min-w-0 flex-1 h-10 min-h-10 max-h-10 resize-none overflow-y-auto rounded-xl bg-neu-bg shadow-neu-pressed px-3 py-2 outline-none focus:ring-1 focus:ring-primary placeholder:text-neu-text-secondary/60" />
           <button aria-label="发送" title="发送" type="submit" disabled={blocked || assistant.archived || !draft.trim()} className="w-10 h-10 shrink-0 rounded-full flex items-center justify-center text-primary shadow-neu-flat active:shadow-neu-pressed disabled:opacity-40 transition-all">
-            <Send className="w-4 h-4" aria-hidden="true" />
+            <span className="material-symbols-outlined text-[20px]" aria-hidden="true">send</span>
           </button>
         </form>
-      </div>}
+      </div>)}
     </section>}
   </div>;
 }
